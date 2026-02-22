@@ -5,6 +5,7 @@ import { JobFinderScreen } from '../screens/JobFinderScreen';
 import { SavedJobsScreen } from '../screens/SavedJobsScreen';
 import { AppliedJobsScreen } from '../screens/AppliedJobsScreen';
 import { ApplicationFormScreen } from '../screens/ApplicationFormScreen';
+import { JobDetailsScreen } from '../screens/JobDetailsScreen';
 import { LoginScreen } from '../screens/LoginScreen';
 import { RegisterScreen } from '../screens/RegisterScreen';
 import { useThemeContext } from '../context/ThemeContext';
@@ -15,7 +16,7 @@ const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 
 function MainTabs() {
-  const { theme, isDark } = useThemeContext();
+  const { theme } = useThemeContext();
 
   return (
     <Tab.Navigator
@@ -29,7 +30,7 @@ function MainTabs() {
           borderTopWidth: 1,
           paddingBottom: 8,
           paddingTop: 8,
-          height: 65,
+          height: 70,
         },
         tabBarLabelStyle: {
           fontSize: 12,
@@ -120,6 +121,17 @@ export const AppNavigator = () => {
         name="Main"
         component={MainTabs}
         options={{ headerShown: false }}
+      />
+      
+      {/* Job Details Screen - Full screen modal */}
+      <Stack.Screen
+        name="JobDetails"
+        component={JobDetailsScreen}
+        options={{
+          headerShown: true,
+          title: 'Job Details',
+          headerBackTitle: 'Back',
+        }}
       />
       
       {/* Auth Screens - Modal style for login/register */}

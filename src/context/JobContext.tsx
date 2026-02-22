@@ -2,8 +2,10 @@ import React, { createContext, useState, ReactNode, useContext, useEffect } from
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Job, Application } from '../types';
 
-// Note: We can't import useAuth here due to circular dependency
-// We'll pass userId through the applyJob function instead
+interface SavedJobEntry {
+  userId: string;
+  job: Job;
+}
 
 interface JobContextProps {
   jobs: Job[];
@@ -12,6 +14,7 @@ interface JobContextProps {
   addJob: (job: Job) => void;
   removeJob: (jobId: string) => void;
   applyJob: (application: Omit<Application, 'id' | 'appliedAt'>) => void;
+  removeApplication: (applicationId: string) => void;
   setJobs: (jobs: Job[]) => void;
   isJobSaved: (jobId: string) => boolean;
   isJobApplied: (jobId: string) => boolean;
@@ -27,15 +30,23 @@ const APPLICATIONS_KEY = '@job_finder_applications';
 
 export const JobProvider = ({ children }: { children: ReactNode }) => {
   const [jobs, setJobs] = useState<Job[]>([]);
-  const [savedJobs, setSavedJobs] = useState<Job[]>([]);
+  const [allSavedJobs, setAllSavedJobs] = useState<SavedJobEntry[]>([]);
   const [allApplications, setAllApplications] = useState<Application[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+
+  // Filter saved jobs by current user
+  const savedJobs = allSavedJobs
+    .filter(entry => {
+      // Only show jobs if user is logged in AND it's their job
+      if (!currentUserId) return false;
+      return entry.userId === currentUserId;
+    })
+    .map(entry => entry.job);
 
   // Filter applications by current user
   const applications = allApplications.filter(app => {
-    // Safety check - ensure app has required fields
     if (!app || !app.userId) return false;
-    // Only show apps if user is logged in AND it's their app
     if (!currentUserId) return false;
     return app.userId === currentUserId;
   });
@@ -45,64 +56,40 @@ export const JobProvider = ({ children }: { children: ReactNode }) => {
     loadSavedData();
   }, []);
 
-  // Save to storage whenever savedJobs changes
+  // Save to storage whenever allSavedJobs changes
   useEffect(() => {
     saveSavedJobs();
-  }, [savedJobs]);
+  }, [allSavedJobs]);
 
   // Save to storage whenever allApplications changes
   useEffect(() => {
     saveApplications();
   }, [allApplications]);
 
-  // Listen for storage changes (e.g., when user logs out)
-  useEffect(() => {
-    const checkInterval = setInterval(async () => {
-      try {
-        const storedApps = await AsyncStorage.getItem(APPLICATIONS_KEY);
-        const apps = storedApps ? JSON.parse(storedApps) : [];
-        
-        // Only update if different
-        if (JSON.stringify(apps) !== JSON.stringify(allApplications)) {
-          setAllApplications(apps);
-        }
-      } catch (error) {
-        // Ignore errors
-      }
-    }, 2000); // Check every 2 seconds
-
-    return () => clearInterval(checkInterval);
-  }, [allApplications]);
-
   // Sync saved jobs with current jobs data to update logos and other fields
   useEffect(() => {
-    if (jobs.length > 0 && savedJobs.length > 0) {
+    if (jobs.length > 0 && allSavedJobs.length > 0) {
       syncSavedJobsWithCurrentData();
     }
-  }, [jobs]); // Only depend on jobs, not savedJobs
+  }, [jobs]);
 
   const syncSavedJobsWithCurrentData = () => {
-    const updatedSavedJobs = savedJobs.map(savedJob => {
-      // Find the matching job in current jobs list
-      const currentJob = jobs.find(j => j.id === savedJob.id);
-      
-      // If found, use the current job data (which has logo and latest info)
-      // Otherwise keep the saved job as is
-      return currentJob || savedJob;
+    const updatedSavedJobs = allSavedJobs.map(entry => {
+      const currentJob = jobs.find(j => j.id === entry.job.id);
+      return currentJob ? { ...entry, job: currentJob } : entry;
     });
 
-    // Only update if there are actual changes
-    const hasChanges = updatedSavedJobs.some((job, index) => {
-      const saved = savedJobs[index];
+    const hasChanges = updatedSavedJobs.some((entry, index) => {
+      const saved = allSavedJobs[index];
       if (!saved) return true;
-      return job.companyLogo !== saved.companyLogo || 
-             job.salary !== saved.salary ||
-             job.description !== saved.description;
+      return entry.job.companyLogo !== saved.job.companyLogo || 
+             entry.job.salary !== saved.job.salary ||
+             entry.job.description !== saved.job.description;
     });
 
     if (hasChanges) {
       console.log('Syncing saved jobs with fresh data...');
-      setSavedJobs(updatedSavedJobs);
+      setAllSavedJobs(updatedSavedJobs);
     }
   };
 
@@ -111,10 +98,25 @@ export const JobProvider = ({ children }: { children: ReactNode }) => {
       // Load saved jobs
       const savedJobsData = await AsyncStorage.getItem(SAVED_JOBS_KEY);
       if (savedJobsData) {
-        setSavedJobs(JSON.parse(savedJobsData));
+        const parsed = JSON.parse(savedJobsData);
+        
+        // Migrate old format (array of jobs) to new format (array of entries)
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          if (parsed[0].userId) {
+            // New format
+            setAllSavedJobs(parsed);
+          } else {
+            // Old format - migrate to legacy user
+            const migrated: SavedJobEntry[] = parsed.map((job: Job) => ({
+              userId: 'legacy-user',
+              job: job,
+            }));
+            setAllSavedJobs(migrated);
+          }
+        }
       }
 
-      // Load all applications (will be filtered by user)
+      // Load all applications
       const applicationsData = await AsyncStorage.getItem(APPLICATIONS_KEY);
       if (applicationsData) {
         const apps = JSON.parse(applicationsData);
@@ -124,7 +126,7 @@ export const JobProvider = ({ children }: { children: ReactNode }) => {
           if (!app.userId) {
             return {
               ...app,
-              userId: 'legacy-user', // Assign to legacy user
+              userId: 'legacy-user',
             };
           }
           return app;
@@ -132,20 +134,30 @@ export const JobProvider = ({ children }: { children: ReactNode }) => {
         
         setAllApplications(migratedApps);
       }
+      
+      // Mark initial load as complete
+      setIsInitialLoad(false);
     } catch (error) {
       console.error('Error loading saved data:', error);
+      setIsInitialLoad(false);
     }
   };
 
   const saveSavedJobs = async () => {
+    // Don't save during initial load
+    if (isInitialLoad) return;
+    
     try {
-      await AsyncStorage.setItem(SAVED_JOBS_KEY, JSON.stringify(savedJobs));
+      await AsyncStorage.setItem(SAVED_JOBS_KEY, JSON.stringify(allSavedJobs));
     } catch (error) {
       console.error('Error saving jobs:', error);
     }
   };
 
   const saveApplications = async () => {
+    // Don't save during initial load
+    if (isInitialLoad) return;
+    
     try {
       await AsyncStorage.setItem(APPLICATIONS_KEY, JSON.stringify(allApplications));
     } catch (error) {
@@ -154,13 +166,24 @@ export const JobProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const addJob = (job: Job) => {
-    if (!savedJobs.find(j => j.id === job.id)) {
-      setSavedJobs(prev => [...prev, job]);
+    if (!currentUserId) return;
+    
+    // Check if job is already saved by this user
+    const alreadySaved = allSavedJobs.some(
+      entry => entry.userId === currentUserId && entry.job.id === job.id
+    );
+    
+    if (!alreadySaved) {
+      setAllSavedJobs(prev => [...prev, { userId: currentUserId, job }]);
     }
   };
 
   const removeJob = (jobId: string) => {
-    setSavedJobs(prev => prev.filter(j => j.id !== jobId));
+    if (!currentUserId) return;
+    
+    setAllSavedJobs(prev => 
+      prev.filter(entry => !(entry.userId === currentUserId && entry.job.id === jobId))
+    );
   };
 
   const applyJob = (application: Omit<Application, 'id' | 'appliedAt'>) => {
@@ -172,12 +195,22 @@ export const JobProvider = ({ children }: { children: ReactNode }) => {
     setAllApplications(prev => [...prev, newApplication]);
   };
 
+  const removeApplication = (applicationId: string) => {
+    if (!currentUserId) return;
+    
+    setAllApplications(prev => 
+      prev.filter(app => !(app.id === applicationId && app.userId === currentUserId))
+    );
+  };
+
   const isJobSaved = (jobId: string) => {
-    return savedJobs.some(j => j.id === jobId);
+    if (!currentUserId) return false;
+    return allSavedJobs.some(
+      entry => entry.userId === currentUserId && entry.job.id === jobId
+    );
   };
 
   const isJobApplied = (jobId: string) => {
-    // If no user is logged in, no jobs are applied
     if (!currentUserId) return false;
     return applications.some(app => app.jobId === jobId);
   };
@@ -187,7 +220,8 @@ export const JobProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const clearSavedJobs = () => {
-    setSavedJobs([]);
+    // Don't actually clear from storage, just reset the view
+    // Jobs will be filtered by user automatically
   };
 
   return (
@@ -195,10 +229,11 @@ export const JobProvider = ({ children }: { children: ReactNode }) => {
       value={{
         jobs,
         savedJobs,
-        applications, // This is the filtered list
+        applications,
         addJob,
         removeJob,
         applyJob,
+        removeApplication,
         setJobs,
         isJobSaved,
         isJobApplied,

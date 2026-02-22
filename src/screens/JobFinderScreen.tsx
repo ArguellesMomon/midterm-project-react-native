@@ -55,15 +55,6 @@ export const JobFinderScreen = ({ navigation }: any) => {
   useEffect(() => {
     let filtered = jobs;
 
-    // Log some salary examples
-    if (jobs.length > 0) {
-      console.log('=== SALARY FORMAT EXAMPLES ===');
-      jobs.slice(0, 5).forEach((job, i) => {
-        console.log(`Job ${i}: ${job.title}`);
-        console.log(`  Salary: "${job.salary}"`);
-      });
-    }
-
     // Apply search
     if (search.trim() !== '') {
       filtered = filtered.filter(job =>
@@ -75,21 +66,21 @@ export const JobFinderScreen = ({ navigation }: any) => {
     // Apply job type filter
     if (filters.jobType.length > 0) {
       filtered = filtered.filter(job =>
-        filters.jobType.includes(job.jobType)
+        job.jobType && filters.jobType.includes(job.jobType)
       );
     }
 
     // Apply work model filter
     if (filters.workModel.length > 0) {
       filtered = filtered.filter(job =>
-        filters.workModel.includes(job.workModel)
+        job.workModel && filters.workModel.includes(job.workModel)
       );
     }
 
     // Apply seniority filter
     if (filters.seniority.length > 0) {
       filtered = filtered.filter(job =>
-        filters.seniority.includes(job.seniority)
+        job.seniority && filters.seniority.includes(job.seniority)
       );
     }
 
@@ -98,17 +89,16 @@ export const JobFinderScreen = ({ navigation }: any) => {
       filtered = filtered.filter(job => {
         if (job.salary === 'Salary not specified') return false;
         
-        // Extract all numbers from salary string (handles formats like "USD 50,000 - 80,000" or "$50k")
-        const salaryStr = job.salary.replace(/,/g, ''); // Remove commas
+        // Extract all numbers from salary string
+        const salaryStr = job.salary.replace(/,/g, '');
         const numbers = salaryStr.match(/\d+/g);
         
         if (!numbers || numbers.length === 0) return false;
         
-        // Get the minimum salary value (first number in the string)
         let minSalary = parseInt(numbers[0]);
         
-        // Handle "k" suffix (e.g., "50k" = 50000)
-        if (salaryStr.includes('k') || salaryStr.includes('K')) {
+        // Handle "k" suffix
+        if (salaryStr.toLowerCase().includes('k')) {
           minSalary = minSalary * 1000;
         }
         
@@ -116,8 +106,6 @@ export const JobFinderScreen = ({ navigation }: any) => {
         if (minSalary < 1000) {
           minSalary = minSalary * 1000;
         }
-        
-        console.log(`Filtering job: ${job.title}, Salary: ${job.salary}, Parsed: ${minSalary}`);
         
         switch (filters.salaryRange) {
           case 'Under $50k':
@@ -146,21 +134,8 @@ export const JobFinderScreen = ({ navigation }: any) => {
 
   const handleAuthButton = () => {
     if (isAuthenticated) {
-      // User is logged in - show logout confirmation
-      Alert.alert(
-        'Logout',
-        'Are you sure you want to logout?',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { 
-            text: 'Logout', 
-            style: 'destructive',
-            onPress: logout 
-          },
-        ]
-      );
+      logout();
     } else {
-      // User is not logged in - navigate to login
       navigation.navigate('Login');
     }
   };
@@ -185,7 +160,7 @@ export const JobFinderScreen = ({ navigation }: any) => {
     animatedHeader: {
       backgroundColor: theme.colors.background,
       paddingHorizontal: theme.spacing.md,
-      paddingTop: 70, // Added top padding to lower content
+      paddingTop: 70,
       paddingBottom: theme.spacing.md,
     },
     topBar: {
@@ -208,7 +183,7 @@ export const JobFinderScreen = ({ navigation }: any) => {
       fontWeight: '600',
     },
     title: {
-      fontSize: 28,
+      fontSize: 26,
       fontWeight: '700',
       color: theme.colors.text,
     },

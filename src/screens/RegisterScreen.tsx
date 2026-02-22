@@ -11,9 +11,13 @@ import {
   Alert,
   ActivityIndicator,
   Animated,
+  Image,
 } from 'react-native';
 import { useThemeContext } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
+
+// Import your logo
+const logo = require('../image/logo.png'); // Adjust the path if needed
 
 export const RegisterScreen = ({ navigation }: any) => {
   const { theme, isDark } = useThemeContext();
@@ -34,7 +38,6 @@ export const RegisterScreen = ({ navigation }: any) => {
   };
 
   const handleRegister = async () => {
-    // Validation
     if (!name || !email || !password || !confirmPassword) {
       Alert.alert('Error', 'Please fill in all fields');
       return;
@@ -74,7 +77,6 @@ export const RegisterScreen = ({ navigation }: any) => {
         ]
       );
     } else {
-      // Show success animation
       setShowSuccess(true);
       Animated.sequence([
         Animated.spring(successAnimation, {
@@ -85,7 +87,6 @@ export const RegisterScreen = ({ navigation }: any) => {
         }),
         Animated.delay(1000),
       ]).start(() => {
-        // Reset navigation to Main screen, removing auth screens from stack
         navigation.reset({
           index: 0,
           routes: [{ name: 'Main' }],
@@ -126,26 +127,18 @@ export const RegisterScreen = ({ navigation }: any) => {
     },
     scrollContent: {
       paddingHorizontal: theme.spacing.lg,
-      paddingTop: 10, // Reduced since we have back button
-      paddingBottom: 100, // Extra padding at bottom to ensure last field is visible
+      paddingTop: 10,
+      paddingBottom: 100,
     },
     header: {
       alignItems: 'center',
       marginBottom: theme.spacing.md,
     },
     logo: {
-      width: 80,
-      height: 80,
+      width: 100,
+      height: 100,
       borderRadius: 20,
-      backgroundColor: theme.colors.primary,
-      justifyContent: 'center',
-      alignItems: 'center',
       marginBottom: theme.spacing.md,
-    },
-    logoText: {
-      fontSize: 36,
-      fontWeight: '700',
-      color: theme.colors.surface,
     },
     title: {
       fontSize: 32,
@@ -296,11 +289,16 @@ export const RegisterScreen = ({ navigation }: any) => {
         style={{ flex: 1 }}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
       >
-        {/* Back Button */}
         <View style={styles.backButtonContainer}>
           <TouchableOpacity
             style={styles.backButton}
-            onPress={() => navigation.goBack()}
+            onPress={() => {
+              if (navigation.canGoBack()) {
+                navigation.goBack();
+              } else {
+                navigation.navigate('Main');
+              }
+            }}
             activeOpacity={0.7}
           >
             <Text style={styles.backButtonText}>← Back</Text>
@@ -312,124 +310,125 @@ export const RegisterScreen = ({ navigation }: any) => {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-        <View style={styles.header}>
-          <View style={styles.logo}>
-            <Text style={styles.logoText}>💼</Text>
-          </View>
-          <Text style={styles.title}>Create Account</Text>
-          <Text style={styles.subtitle}>Join us to start your job search</Text>
-        </View>
-
-        <View style={styles.form}>
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Full Name</Text>
-            <TextInput
-              style={[
-                styles.input,
-                focusedField === 'name' && styles.inputFocused,
-              ]}
-              placeholder="John Doe"
-              placeholderTextColor={theme.colors.textSecondary}
-              value={name}
-              onChangeText={setName}
-              onFocus={() => setFocusedField('name')}
-              onBlur={() => setFocusedField(null)}
-              autoCapitalize="words"
+          <View style={styles.header}>
+            <Image 
+              source={logo} 
+              style={styles.logo}
+              resizeMode="contain"
             />
+            <Text style={styles.title}>Create Account</Text>
+            <Text style={styles.subtitle}>Join us to start your job search</Text>
           </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Email</Text>
-            <TextInput
-              style={[
-                styles.input,
-                focusedField === 'email' && styles.inputFocused,
-              ]}
-              placeholder="your.email@example.com"
-              placeholderTextColor={theme.colors.textSecondary}
-              value={email}
-              onChangeText={setEmail}
-              onFocus={() => setFocusedField('email')}
-              onBlur={() => setFocusedField(null)}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-          </View>
+          <View style={styles.form}>
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Full Name</Text>
+              <TextInput
+                style={[
+                  styles.input,
+                  focusedField === 'name' && styles.inputFocused,
+                ]}
+                placeholder="John Doe"
+                placeholderTextColor={theme.colors.textSecondary}
+                value={name}
+                onChangeText={setName}
+                onFocus={() => setFocusedField('name')}
+                onBlur={() => setFocusedField(null)}
+                autoCapitalize="words"
+              />
+            </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Password</Text>
-            <TextInput
-              style={[
-                styles.input,
-                focusedField === 'password' && styles.inputFocused,
-              ]}
-              placeholder="Create a password"
-              placeholderTextColor={theme.colors.textSecondary}
-              value={password}
-              onChangeText={setPassword}
-              onFocus={() => setFocusedField('password')}
-              onBlur={() => setFocusedField(null)}
-              secureTextEntry
-            />
-            <Text style={styles.passwordHint}>
-              Must be at least 6 characters
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Email</Text>
+              <TextInput
+                style={[
+                  styles.input,
+                  focusedField === 'email' && styles.inputFocused,
+                ]}
+                placeholder="your.email@example.com"
+                placeholderTextColor={theme.colors.textSecondary}
+                value={email}
+                onChangeText={setEmail}
+                onFocus={() => setFocusedField('email')}
+                onBlur={() => setFocusedField(null)}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Password</Text>
+              <TextInput
+                style={[
+                  styles.input,
+                  focusedField === 'password' && styles.inputFocused,
+                ]}
+                placeholder="Create a password"
+                placeholderTextColor={theme.colors.textSecondary}
+                value={password}
+                onChangeText={setPassword}
+                onFocus={() => setFocusedField('password')}
+                onBlur={() => setFocusedField(null)}
+                secureTextEntry
+              />
+              <Text style={styles.passwordHint}>
+                Must be at least 6 characters
+              </Text>
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Confirm Password</Text>
+              <TextInput
+                style={[
+                  styles.input,
+                  focusedField === 'confirm' && styles.inputFocused,
+                ]}
+                placeholder="Re-enter your password"
+                placeholderTextColor={theme.colors.textSecondary}
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                onFocus={() => setFocusedField('confirm')}
+                onBlur={() => setFocusedField(null)}
+                secureTextEntry
+              />
+            </View>
+
+            <TouchableOpacity
+              style={[styles.registerButton, isLoading && styles.registerButtonDisabled]}
+              onPress={handleRegister}
+              disabled={isLoading}
+              activeOpacity={0.8}
+            >
+              {isLoading ? (
+                <ActivityIndicator color={theme.colors.surface} />
+              ) : (
+                <Text style={styles.registerButtonText}>Create Account</Text>
+              )}
+            </TouchableOpacity>
+
+            <Text style={styles.termsText}>
+              By signing up, you agree to our{' '}
+              <Text style={styles.termsLink}>Terms of Service</Text> and{' '}
+              <Text style={styles.termsLink}>Privacy Policy</Text>
             </Text>
           </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Confirm Password</Text>
-            <TextInput
-              style={[
-                styles.input,
-                focusedField === 'confirm' && styles.inputFocused,
-              ]}
-              placeholder="Re-enter your password"
-              placeholderTextColor={theme.colors.textSecondary}
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              onFocus={() => setFocusedField('confirm')}
-              onBlur={() => setFocusedField(null)}
-              secureTextEntry
-            />
+          <View style={styles.divider}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>or</Text>
+            <View style={styles.dividerLine} />
           </View>
 
-          <TouchableOpacity
-            style={[styles.registerButton, isLoading && styles.registerButtonDisabled]}
-            onPress={handleRegister}
-            disabled={isLoading}
-            activeOpacity={0.8}
-          >
-            {isLoading ? (
-              <ActivityIndicator color={theme.colors.surface} />
-            ) : (
-              <Text style={styles.registerButtonText}>Create Account</Text>
-            )}
-          </TouchableOpacity>
-
-          <Text style={styles.termsText}>
-            By signing up, you agree to our{' '}
-            <Text style={styles.termsLink}>Terms of Service</Text> and{' '}
-            <Text style={styles.termsLink}>Privacy Policy</Text>
-          </Text>
-        </View>
-
-        <View style={styles.divider}>
-          <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>or</Text>
-          <View style={styles.dividerLine} />
-        </View>
-
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>Already have an account?</Text>
-          <TouchableOpacity onPress={() => navigation.replace('Login')}>
-            <Text style={styles.loginLink}>Sign In</Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
+          <View style={styles.footer}>
+            <Text style={styles.footerText}>Already have an account?</Text>
+            <TouchableOpacity onPress={() => navigation.replace('Login')}>
+              <Text style={styles.loginLink}>Sign In</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
       </KeyboardAvoidingView>
 
-      {/* Success Animation Overlay */}
       {showSuccess && (
         <Animated.View style={[styles.successOverlay, { opacity: successOpacity }]}>
           <Animated.View style={[styles.successCard, { transform: [{ scale: successScale }] }]}>
